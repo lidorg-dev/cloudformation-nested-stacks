@@ -1,0 +1,35 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for collections",
+
+  "Parameters" : {
+    "lambdaNameParam" : {
+      "Type" : "String",
+      "Description" : "lambda name."
+    }
+  },
+
+  "Resources": {
+
+    "HelloLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": { "Ref": "lambdaNameParam" },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::Join": [ "",
+            [
+              "arn:aws:iam::",
+              { "Ref": "AWS::AccountId" },
+              ":role/",
+              "lambda_basic_execution"
+            ]
+          ]
+        },
+        "Code": { "ZipFile": "exports.handler = function(event, context, cb) { return cb(null, {message: 'Hello World'}); };" },
+        "Runtime": "nodejs4.3"
+      }
+    }
+
+  }
+}

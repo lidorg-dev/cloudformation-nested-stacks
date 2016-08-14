@@ -1,0 +1,100 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for collections",
+
+  "Parameters" : {
+    "BucketNameParam" : {
+      "Type" : "String",
+      "Description" : "bucket name."
+    }
+  },
+
+  "Resources": {
+
+    "S3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl" : "PublicRead",
+        "BucketName" : {"Ref": "BucketNameParam"},
+        "WebsiteConfiguration" : {
+          "IndexDocument" : "index.html",
+          "ErrorDocument" : "error.html"
+        }
+      }
+    },
+
+    "S3BucketPolicy" : {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+        "Bucket" : {"Ref" : "S3Bucket"},
+        "PolicyDocument": {
+          "Statement" : [{
+            "Action" : [ "s3:GetObject" ],
+            "Effect" : "Allow",
+            "Resource" : {
+              "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "S3Bucket" } , "/*" ]]
+            },
+            "Principal" : "*"
+          }]
+        }
+      }
+    },
+
+    "MyUser" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Path" : "/",
+        "Policies" : [{
+          "PolicyName" : "browser-invoke-lambda",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement" : [
+              {
+                "Action": [ "lambda:InvokeFunction" ],
+                "Effect": "Allow",
+                "Resource": "arn:aws:lambda:us-east-1:648629254561:function:cloudformation-jazz"
+              }
+            ]
+          }
+        }]
+      }
+    },
+
+    "MyAccessKey" : {
+      "Type" : "AWS::IAM::AccessKey",
+      "Properties" : {
+        "UserName" : { "Ref" : "MyUser" }
+      }
+    },
+
+    "lambdaStack" : {
+      "Type" : "AWS::CloudFormation::Stack",
+      "Properties" : {
+        "TemplateURL" : "https://s3.amazonaws.com/cloudformation-base/lambda_stack.json",
+        "Parameters" : {
+          "lambdaNameParam" : "cloudformation-jazz"
+        }
+      }
+    }
+
+  },
+  "Outputs" : {
+    "MyUserAccessKeyId" : {
+      "Value" : { "Ref" : "MyAccessKey" },
+      "Description" : "The IAM AccessKeyId"
+    },
+    "MyUserSecretAccessKey" : {
+      "Value" : { "Fn::GetAtt" : [ "MyAccessKey", "SecretAccessKey"] },
+      "Description" : "The IAM AccessSecretKey (shhhhhhh)"
+    },
+    "WebsiteURL" : {
+      "Value" : { "Fn::GetAtt" : [ "S3Bucket", "WebsiteURL" ] },
+      "Description" : "URL for website hosted on S3"
+    },
+    "S3BucketSecureURL" : {
+      "Value" : { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt" : [ "S3Bucket", "DomainName" ] } ] ] },
+      "Description" : "Name of S3 bucket to hold website content"
+    }
+  }
+
+}
